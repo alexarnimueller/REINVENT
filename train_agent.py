@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import torch
-import pickle
 import numpy as np
 import time
 import os
@@ -12,6 +11,7 @@ from data_structs import Vocabulary, Experience
 from scoring_functions import get_scoring_function
 from utils import Variable, seq_to_smiles, fraction_valid_smiles, unique
 from vizard_logger import VizardLog
+
 
 def train_agent(restore_prior_from='data/Prior.ckpt',
                 restore_agent_from='data/Prior.ckpt',
@@ -165,6 +165,7 @@ def train_agent(restore_prior_from='data/Prior.ckpt',
         f.write("SMILES Score PriorLogP\n")
         for smiles, score, prior_likelihood in zip(smiles, score, prior_likelihood):
             f.write("{} {:5.2f} {:6.2f}\n".format(smiles, score, prior_likelihood))
+
 
 if __name__ == "__main__":
     train_agent()

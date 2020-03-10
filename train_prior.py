@@ -2,8 +2,7 @@
 
 import torch
 from torch.utils.data import DataLoader
-from rdkit import Chem
-from rdkit import rdBase
+from rdkit import Chem, rdBase
 from tqdm import tqdm
 
 from data_structs import MolData, Vocabulary
@@ -31,6 +30,7 @@ def pretrain(restore_from=None):
         Prior.rnn.load_state_dict(torch.load(restore_from))
 
     optimizer = torch.optim.Adam(Prior.rnn.parameters(), lr=0.001)
+
     for epoch in range(1, 6):
         # When training on a few million compounds, this model converges
         # in a few of epochs or even faster. If model sized is increased

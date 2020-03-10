@@ -10,8 +10,10 @@ from torch.utils.data import Dataset
 
 from utils import Variable
 
+
 class Vocabulary(object):
     """A class for handling encoding/decoding from SMILES to an array of indices"""
+
     def __init__(self, init_from_file=None, max_length=140):
         self.special_tokens = ['EOS', 'GO']
         self.additional_chars = set()
@@ -77,6 +79,7 @@ class Vocabulary(object):
     def __str__(self):
         return "Vocabulary containing {} tokens: {}".format(len(self), self.chars)
 
+
 class MolData(Dataset):
     """Custom PyTorch Dataset that takes a file containing SMILES.
 
@@ -87,6 +90,7 @@ class MolData(Dataset):
         Returns:
                 A custom PyTorch dataset for training the Prior.
     """
+
     def __init__(self, fname, voc):
         self.voc = voc
         self.smiles = []
@@ -115,9 +119,11 @@ class MolData(Dataset):
             collated_arr[i, :seq.size(0)] = seq
         return collated_arr
 
+
 class Experience(object):
     """Class for prioritized experience replay that remembers the highest scored sequences
        seen and samples from them with probabilities relative to their scores."""
+
     def __init__(self, voc, max_size=100):
         self.memory = []
         self.max_size = max_size
@@ -126,7 +132,7 @@ class Experience(object):
     def add_experience(self, experience):
         """Experience should be a list of (smiles, score, prior likelihood) tuples"""
         self.memory.extend(experience)
-        if len(self.memory)>self.max_size:
+        if len(self.memory) > self.max_size:
             # Remove duplicates
             idxs, smiles = [], []
             for i, exp in enumerate(self.memory):
@@ -135,17 +141,17 @@ class Experience(object):
                     smiles.append(exp[0])
             self.memory = [self.memory[idx] for idx in idxs]
             # Retain highest scores
-            self.memory.sort(key = lambda x: x[1], reverse=True)
+            self.memory.sort(key=lambda x: x[1], reverse=True)
             self.memory = self.memory[:self.max_size]
             print("\nBest score in memory: {:.2f}".format(self.memory[0][1]))
 
     def sample(self, n):
         """Sample a batch size n of experience"""
-        if len(self.memory)<n:
+        if len(self.memory) < n:
             raise IndexError('Size of memory ({}) is less than requested sample ({})'.format(len(self), n))
         else:
             scores = [x[1] for x in self.memory]
-            sample = np.random.choice(len(self), size=n, replace=False, p=scores/np.sum(scores))
+            sample = np.random.choice(len(self), size=n, replace=False, p=scores / np.sum(scores))
             sample = [self.memory[i] for i in sample]
             smiles = [x[0] for x in sample]
             scores = [x[1] for x in sample]
@@ -191,6 +197,7 @@ class Experience(object):
     def __len__(self):
         return len(self.memory)
 
+
 def replace_halogen(string):
     """Regex to replace Br and Cl with single letters"""
     br = re.compile('Br')
@@ -199,6 +206,7 @@ def replace_halogen(string):
     string = cl.sub('L', string)
 
     return string
+
 
 def tokenize(smiles):
     """Takes a SMILES string and returns a list of tokens.
@@ -217,6 +225,7 @@ def tokenize(smiles):
     tokenized.append('EOS')
     return tokenized
 
+
 def canonicalize_smiles_from_file(fname):
     """Reads a SMILES file and returns a list of RDKIT SMILES"""
     with open(fname, 'r') as f:
@@ -231,21 +240,24 @@ def canonicalize_smiles_from_file(fname):
         print("{} SMILES retrieved".format(len(smiles_list)))
         return smiles_list
 
-def filter_mol(mol, max_heavy_atoms=50, min_heavy_atoms=10, element_list=[6,7,8,9,16,17,35]):
+
+def filter_mol(mol, max_heavy_atoms=50, min_heavy_atoms=10, element_list=[6, 7, 8, 9, 16, 17, 35]):
     """Filters molecules on number of heavy atoms and atom types"""
     if mol is not None:
-        num_heavy = min_heavy_atoms<mol.GetNumHeavyAtoms()<max_heavy_atoms
+        num_heavy = min_heavy_atoms < mol.GetNumHeavyAtoms() < max_heavy_atoms
         elements = all([atom.GetAtomicNum() in element_list for atom in mol.GetAtoms()])
         if num_heavy and elements:
             return True
         else:
             return False
 
+
 def write_smiles_to_file(smiles_list, fname):
     """Write a list of SMILES to a file."""
     with open(fname, 'w') as f:
         for smiles in smiles_list:
             f.write(smiles + "\n")
+
 
 def filter_on_chars(smiles_list, chars):
     """Filters SMILES on the characters they contain.
@@ -257,6 +269,7 @@ def filter_on_chars(smiles_list, chars):
         if all([char in chars for char in tokenized][:-1]):
             smiles_list_valid.append(smiles)
     return smiles_list_valid
+
 
 def filter_file_on_chars(smiles_fname, voc_fname):
     """Filters a SMILES file using a vocabulary file.
@@ -277,6 +290,7 @@ def filter_file_on_chars(smiles_fname, voc_fname):
         for smiles in valid_smiles:
             f.write(smiles + "\n")
 
+
 def combine_voc_from_files(fnames):
     """Combine two vocabularies"""
     chars = set()
@@ -287,6 +301,7 @@ def combine_voc_from_files(fnames):
     with open("_".join(fnames) + '_combined', 'w') as f:
         for char in chars:
             f.write(char + "\n")
+
 
 def construct_vocabulary(smiles_list):
     """Returns all the characters present in a SMILES file.
@@ -308,6 +323,7 @@ def construct_vocabulary(smiles_list):
         for char in add_chars:
             f.write(char + "\n")
     return add_chars
+
 
 if __name__ == "__main__":
     smiles_file = sys.argv[1]

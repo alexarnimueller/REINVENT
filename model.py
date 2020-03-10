@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from utils import Variable
 
+
 class MultiGRU(nn.Module):
     """ Implements a three layer GRU cell including an embedding layer
        and an output linear layer back to the size of the vocabulary"""
+
     def __init__(self, voc_size):
         super(MultiGRU, self).__init__()
         self.embedding = nn.Embedding(voc_size, 128)
@@ -31,9 +32,11 @@ class MultiGRU(nn.Module):
         # Initial cell state is zero
         return Variable(torch.zeros(3, batch_size, 512))
 
+
 class RNN():
     """Implements the Prior and Agent RNN. Needs a Vocabulary instance in
     order to determine size of the vocabulary and index of the END token"""
+
     def __init__(self, voc):
         self.rnn = MultiGRU(voc.vocab_size)
         if torch.cuda.is_available():
@@ -100,7 +103,7 @@ class RNN():
             log_prob = F.log_softmax(logits)
             x = torch.multinomial(prob).view(-1)
             sequences.append(x.view(-1, 1))
-            log_probs +=  NLLLoss(log_prob, x)
+            log_probs += NLLLoss(log_prob, x)
             entropy += -torch.sum((log_prob * prob), 1)
 
             x = Variable(x.data)
@@ -110,6 +113,7 @@ class RNN():
 
         sequences = torch.cat(sequences, 1)
         return sequences.data, log_probs, entropy
+
 
 def NLLLoss(inputs, targets):
     """
