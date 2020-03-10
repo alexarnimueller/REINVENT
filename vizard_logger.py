@@ -1,6 +1,7 @@
 import numpy as np
 import os
 
+
 class VizardLog():
     def __init__(self, log_dir):
         self.log_dir = log_dir

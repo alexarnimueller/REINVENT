@@ -34,7 +34,7 @@ class MultiGRU(nn.Module):
 
 
 class RNN():
-    """Implements the Prior and Agent RNN. Needs a Vocabulary instance in
+    """ Implements the Prior and Agent RNN. Needs a Vocabulary instance in
     order to determine size of the vocabulary and index of the END token"""
 
     def __init__(self, voc):
@@ -44,8 +44,7 @@ class RNN():
         self.voc = voc
 
     def likelihood(self, target):
-        """
-            Retrieves the likelihood of a given sequence
+        """ Retrieves the likelihood of a given sequence
 
             Args:
                 target: (batch_size * sequence_lenght) A batch of sequences
@@ -72,8 +71,7 @@ class RNN():
         return log_probs, entropy
 
     def sample(self, batch_size, max_length=140):
-        """
-            Sample a batch of sequences
+        """ Sample a batch of sequences
 
             Args:
                 batch_size : Number of sequences to sample 
@@ -109,15 +107,15 @@ class RNN():
             x = Variable(x.data)
             EOS_sampled = (x == self.voc.vocab['EOS']).data
             finished = torch.ge(finished + EOS_sampled, 1)
-            if torch.prod(finished) == 1: break
+            if torch.prod(finished) == 1:
+                break
 
         sequences = torch.cat(sequences, 1)
         return sequences.data, log_probs, entropy
 
 
 def NLLLoss(inputs, targets):
-    """
-        Custom Negative Log Likelihood loss that returns loss per example,
+    """ Custom Negative Log Likelihood loss that returns loss per example,
         rather than for the entire batch.
 
         Args:

@@ -13,11 +13,10 @@ from utils import Variable, seq_to_smiles, fraction_valid_smiles, unique
 from vizard_logger import VizardLog
 
 
-def train_agent(restore_prior_from='data/Prior.ckpt',
-                restore_agent_from='data/Prior.ckpt',
+def train_agent(restore_agent_from='data/Prior.ckpt',
                 scoring_function='tanimoto',
                 scoring_function_kwargs=None,
-                save_dir=None, learning_rate=0.0005,
+                save_dir=None,
                 batch_size=64, n_steps=3000,
                 num_processes=0, sigma=60,
                 experience_replay=0):

@@ -204,7 +204,6 @@ def replace_halogen(string):
     cl = re.compile('Cl')
     string = br.sub('R', string)
     string = cl.sub('L', string)
-
     return string
 
 
