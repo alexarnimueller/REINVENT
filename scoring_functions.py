@@ -5,12 +5,12 @@ from rdkit import Chem
 from rdkit import rdBase
 from rdkit.Chem import AllChem
 from rdkit import DataStructs
-from sklearn import svm
 import time
 import pickle
 import re
 import threading
 import pexpect
+
 rdBase.DisableLog('rdApp.error')
 
 """Scoring function should be a class where some tasks that are shared for every call
@@ -28,13 +28,15 @@ rdBase.DisableLog('rdApp.error')
    demanding the scoring function is and how well the OS handles the multiprocessing, this might
    be faster than multiprocessing in some cases."""
 
-class no_sulphur():
+
+class NoSulphur(object):
     """Scores structures based on not containing sulphur."""
 
     kwargs = []
 
     def __init__(self):
         pass
+
     def __call__(self, smile):
         mol = Chem.MolFromSmiles(smile)
         if mol:
@@ -42,16 +44,17 @@ class no_sulphur():
             return float(has_sulphur)
         return 0.0
 
-class tanimoto():
+
+class Tanimoto(object):
     """Scores structures based on Tanimoto similarity to a query structure.
        Scores are only scaled up to k=(0,1), after which no more reward is given."""
 
     kwargs = ["k", "query_structure"]
     k = 0.7
-    query_structure = "Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F"
+    query = "Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F"
 
     def __init__(self):
-        query_mol = Chem.MolFromSmiles(self.query_structure)
+        query_mol = Chem.MolFromSmiles(self.query)
         self.query_fp = AllChem.GetMorganFingerprint(query_mol, 2, useCounts=True, useFeatures=True)
 
     def __call__(self, smile):
@@ -63,7 +66,8 @@ class tanimoto():
             return float(score)
         return 0.0
 
-class activity_model():
+
+class ActivityModel(object):
     """Scores based on an ECFP classifier for activity."""
 
     kwargs = ["clf_path"]
@@ -76,7 +80,7 @@ class activity_model():
     def __call__(self, smile):
         mol = Chem.MolFromSmiles(smile)
         if mol:
-            fp = activity_model.fingerprints_from_mol(mol)
+            fp = ActivityModel.fingerprints_from_mol(mol)
             score = self.clf.predict_proba(fp)[:, 1]
             return float(score)
         return 0.0
@@ -86,15 +90,17 @@ class activity_model():
         fp = AllChem.GetMorganFingerprint(mol, 3, useCounts=True, useFeatures=True)
         size = 2048
         nfp = np.zeros((1, size), np.int32)
-        for idx,v in fp.GetNonzeroElements().items():
-            nidx = idx%size
+        for idx, v in fp.GetNonzeroElements().items():
+            nidx = idx % size
             nfp[0, nidx] += int(v)
         return nfp
 
-class Worker():
+
+class Worker(object):
     """A worker class for the Multiprocessing functionality. Spawns a subprocess
        that is listening for input SMILES and inserts the score into the given
        index in the given list."""
+
     def __init__(self, scoring_function=None):
         """The score_re is a regular expression that extracts the score from the
            stdout of the subprocess. This means only scoring functions with range
@@ -117,10 +123,12 @@ class Worker():
     def is_alive(self):
         return self.proc.isalive()
 
-class Multiprocessing():
+
+class Multiprocessing(object):
     """Class for handling multiprocessing of scoring functions. OEtoolkits cant be used with
        native multiprocessing (cant be pickled), so instead we spawn threads that create
        subprocesses."""
+
     def __init__(self, num_processes=None, scoring_function=None):
         self.n = num_processes
         self.workers = [Worker(scoring_function=scoring_function) for _ in range(num_processes)]
@@ -134,7 +142,7 @@ class Multiprocessing():
         while smiles_copy:
             alive_procs = self.alive_workers()
             if not alive_procs:
-               raise RuntimeError("All subprocesses are dead, exiting.")
+                raise RuntimeError("All subprocesses are dead, exiting.")
             # As long as we still have SMILES to score
             used_threads = []
             # Threads name corresponds to the index of the worker, so here
@@ -164,18 +172,22 @@ class Multiprocessing():
                 continue
         return np.array(scores, dtype=np.float32)
 
-class Singleprocessing():
+
+class Singleprocessing(object):
     """Adds an option to not spawn new processes for the scoring functions, but rather
        run them in the main process."""
+
     def __init__(self, scoring_function=None):
         self.scoring_function = scoring_function()
+
     def __call__(self, smiles):
         scores = [self.scoring_function(smile) for smile in smiles]
         return np.array(scores, dtype=np.float32)
 
+
 def get_scoring_function(scoring_function, num_processes=None, **kwargs):
     """Function that initializes and returns a scoring function by name"""
-    scoring_function_classes = [no_sulphur, tanimoto, activity_model]
+    scoring_function_classes = [NoSulphur, Tanimoto, ActivityModel]
     scoring_functions = [f.__name__ for f in scoring_function_classes]
     scoring_function_class = [f for f in scoring_function_classes if f.__name__ == scoring_function][0]
 

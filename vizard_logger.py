@@ -28,10 +28,10 @@ class VizardLog():
 
         if self.last_logged[name] == self.log_every[name]:
             out_f = os.path.join(self.log_dir, name)
-            if dtype=="text":
+            if dtype == "text":
                 with open(out_f, self.overwrite[name]) as f:
                     f.write(data)
-            elif dtype=="array":
+            elif dtype == "array":
                 np.save(out_f, data)
-            elif dtype=="hist":
+            elif dtype == "hist":
                 np.save(out_f, np.histogram(data, density=True, bins=50))

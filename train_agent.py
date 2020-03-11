@@ -7,19 +7,14 @@ import os
 from shutil import copyfile
 
 from model import RNN
-from data_structs import Vocabulary, Experience
+from preprocess import Vocabulary, Experience
 from scoring_functions import get_scoring_function
 from utils import Variable, seq_to_smiles, fraction_valid_smiles, unique
 from vizard_logger import VizardLog
 
 
-def train_agent(restore_agent_from='data/Prior.ckpt',
-                scoring_function='tanimoto',
-                scoring_function_kwargs=None,
-                save_dir=None,
-                batch_size=64, n_steps=3000,
-                num_processes=0, sigma=60,
-                experience_replay=0):
+def train_agent(restore_agent_from='data/Prior.ckpt', scoring_function='Tanimoto', scoring_function_kwargs=None,
+                save_dir=None, batch_size=64, n_steps=3000, num_processes=0, sigma=60, experience_replay=0):
 
     voc = Vocabulary(init_from_file="data/Voc")
 
@@ -89,7 +84,7 @@ def train_agent(restore_agent_from='data/Prior.ckpt',
 
         # Experience Replay
         # First sample
-        if experience_replay and len(experience)>4:
+        if experience_replay and len(experience) > 4:
             exp_seqs, exp_score, exp_prior_likelihood = experience.sample(4)
             exp_agent_likelihood, exp_entropy = Agent.likelihood(exp_seqs.long())
             exp_augmented_likelihood = exp_prior_likelihood + sigma * exp_score

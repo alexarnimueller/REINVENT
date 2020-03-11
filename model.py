@@ -33,7 +33,7 @@ class MultiGRU(nn.Module):
         return Variable(torch.zeros(3, batch_size, 512))
 
 
-class RNN():
+class RNN(object):
     """ Implements the Prior and Agent RNN. Needs a Vocabulary instance in
     order to determine size of the vocabulary and index of the END token"""
 
@@ -50,13 +50,12 @@ class RNN():
                 target: (batch_size * sequence_lenght) A batch of sequences
 
             Outputs:
-                log_probs : (batch_size) Log likelihood for each example*
-                entropy: (batch_size) The entropies for the sequences. Not
-                                      currently used.
+                log_probs : (batch_size) Log likelihood for each example
+                entropy: (batch_size) The entropies for the sequences. Not currently used.
         """
         batch_size, seq_length = target.size()
         start_token = Variable(torch.zeros(batch_size, 1).long())
-        start_token[:] = self.voc.vocab['GO']
+        start_token[:] = self.voc.stoi['GO']
         x = torch.cat((start_token, target[:, :-1]), 1)
         h = self.rnn.init_h(batch_size)
 
@@ -64,9 +63,9 @@ class RNN():
         entropy = Variable(torch.zeros(batch_size))
         for step in range(seq_length):
             logits, h = self.rnn(x[:, step], h)
-            log_prob = F.log_softmax(logits)
-            prob = F.softmax(logits)
-            log_probs += NLLLoss(log_prob, target[:, step])
+            log_prob = F.log_softmax(logits, dim=1)
+            prob = F.softmax(logits, dim=1)
+            log_probs += nll_loss(log_prob, target[:, step])
             entropy += -torch.sum((log_prob * prob), 1)
         return log_probs, entropy
 
@@ -84,7 +83,7 @@ class RNN():
                                     currently used.
         """
         start_token = Variable(torch.zeros(batch_size).long())
-        start_token[:] = self.voc.vocab['GO']
+        start_token[:] = self.voc.stoi['GO']
         h = self.rnn.init_h(batch_size)
         x = start_token
 
@@ -97,16 +96,16 @@ class RNN():
 
         for step in range(max_length):
             logits, h = self.rnn(x, h)
-            prob = F.softmax(logits)
+            prob = F.softmax(logits, dim=1)
             log_prob = F.log_softmax(logits)
-            x = torch.multinomial(prob).view(-1)
+            x = torch.multinomial(prob, 1).view(-1)
             sequences.append(x.view(-1, 1))
-            log_probs += NLLLoss(log_prob, x)
+            log_probs += nll_loss(log_prob, x)
             entropy += -torch.sum((log_prob * prob), 1)
 
             x = Variable(x.data)
-            EOS_sampled = (x == self.voc.vocab['EOS']).data
-            finished = torch.ge(finished + EOS_sampled, 1)
+            eos_sampled = (x == self.voc.stoi['EOS']).data
+            finished = torch.ge(finished + eos_sampled, 1)
             if torch.prod(finished) == 1:
                 break
 
@@ -114,7 +113,7 @@ class RNN():
         return sequences.data, log_probs, entropy
 
 
-def NLLLoss(inputs, targets):
+def nll_loss(inputs, targets):
     """ Custom Negative Log Likelihood loss that returns loss per example,
         rather than for the entire batch.
 
