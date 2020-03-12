@@ -97,7 +97,7 @@ class RNN(object):
         for step in range(max_length):
             logits, h = self.rnn(x, h)
             prob = F.softmax(logits, dim=1)
-            log_prob = F.log_softmax(logits)
+            log_prob = F.log_softmax(logits, dim=1)
             x = torch.multinomial(prob, 1).view(-1)
             sequences.append(x.view(-1, 1))
             log_probs += nll_loss(log_prob, x)

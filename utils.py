@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from rdkit.Chem import Draw, MolFromSmiles
+from rdkit.Chem import Draw, MolFromSmiles, CanonSmiles
 
 
 def Variable(tensor):
@@ -49,10 +49,25 @@ def unique(arr):
     return torch.LongTensor(np.sort(idxs))
 
 
-def mol_to_torchimage(smiles):
-    """ Function to plot 9 random molecules from a list of smiles for Tensorboard visualization"""
-    mols = [MolFromSmiles(s) for s in smiles]
-    img = Draw.MolsToGridImage(mols=mols, molsPerRow=2, subImgSize=(600, 600))
-    img = np.array(img.getdata()).reshape((img.size[0], img.size[1], 3))
-    img = img / 255.
-    return torch.from_numpy(np.transpose(img, (2, 0, 1)))
+def is_valid_mol(smiles, return_smiles=False):
+    """ function to check a generated SMILES string for validity """
+    try:
+        m = CanonSmiles(smiles.strip(), 1)
+    except:
+        m = None
+    if return_smiles:
+        return m is not None, m
+    else:
+        return m is not None
+
+
+def mol_to_torchimage(smiles, labels=None):
+    """ Function to plot 9 random molecules from a list of smiles for Tensorboard visualization """
+    mols = [MolFromSmiles(s.strip()) for s in smiles]
+    if any(labels):
+        labels = [str(lab) for lab in labels]
+    img = Draw.MolsToGridImage(mols=mols, legends=labels, molsPerRow=2, subImgSize=(600, 600))
+    pic = np.array(img.getdata()).reshape((img.size[0], img.size[1], 3))
+    img.close()
+    pic = pic / 255.
+    return torch.from_numpy(np.transpose(pic, (2, 0, 1)))

@@ -4,7 +4,7 @@ import numpy as np
 from rdkit import Chem
 from rdkit import rdBase
 from rdkit.Chem import AllChem
-from rdkit import DataStructs
+from rdkit.DataStructs import ConvertToNumpyArray, TanimotoSimilarity
 import time
 import pickle
 import re
@@ -50,18 +50,18 @@ class Tanimoto(object):
        Scores are only scaled up to k=(0,1), after which no more reward is given."""
 
     kwargs = ["k", "query_structure"]
-    k = 0.7
+    k = 0.9
     query = "Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F"
 
     def __init__(self):
         query_mol = Chem.MolFromSmiles(self.query)
-        self.query_fp = AllChem.GetMorganFingerprint(query_mol, 2, useCounts=True, useFeatures=True)
+        self.query_fp = AllChem.GetMorganFingerprint(query_mol, 3, useFeatures=True)
 
     def __call__(self, smile):
         mol = Chem.MolFromSmiles(smile)
         if mol:
-            fp = AllChem.GetMorganFingerprint(mol, 2, useCounts=True, useFeatures=True)
-            score = DataStructs.TanimotoSimilarity(self.query_fp, fp)
+            fp = AllChem.GetMorganFingerprint(mol, 3, useFeatures=True)
+            score = TanimotoSimilarity(self.query_fp, fp)
             score = min(score, self.k) / self.k
             return float(score)
         return 0.0
@@ -87,12 +87,9 @@ class ActivityModel(object):
 
     @classmethod
     def fingerprints_from_mol(cls, mol):
-        fp = AllChem.GetMorganFingerprint(mol, 3, useCounts=True, useFeatures=True)
-        size = 2048
-        nfp = np.zeros((1, size), np.int32)
-        for idx, v in fp.GetNonzeroElements().items():
-            nidx = idx % size
-            nfp[0, nidx] += int(v)
+        fp = AllChem.GetMorganFingerprint(mol, 3, useFeatures=True)
+        nfp = np.zeros((1,))
+        ConvertToNumpyArray(fp, nfp)
         return nfp
 
 
