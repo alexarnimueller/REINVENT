@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from rdkit import Chem
+from rdkit.Chem import Draw, MolFromSmiles
 
 
 def Variable(tensor):
@@ -34,7 +34,7 @@ def fraction_valid_smiles(smiles):
     """Takes a list of SMILES and returns fraction valid."""
     i = 0
     for smile in smiles:
-        if Chem.MolFromSmiles(smile):
+        if MolFromSmiles(smile):
             i += 1
     return i / len(smiles)
 
@@ -47,3 +47,12 @@ def unique(arr):
     if torch.cuda.is_available():
         return torch.LongTensor(np.sort(idxs)).cuda()
     return torch.LongTensor(np.sort(idxs))
+
+
+def mol_to_torchimage(smiles):
+    """ Function to plot 9 random molecules from a list of smiles for Tensorboard visualization"""
+    mols = [MolFromSmiles(s) for s in smiles]
+    img = Draw.MolsToGridImage(mols=mols, molsPerRow=2, subImgSize=(600, 600))
+    img = np.array(img.getdata()).reshape((img.size[0], img.size[1], 3))
+    img = img / 255.
+    return torch.from_numpy(np.transpose(img, (2, 0, 1)))

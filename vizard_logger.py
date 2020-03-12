@@ -35,3 +35,6 @@ class VizardLog():
                 np.save(out_f, data)
             elif dtype == "hist":
                 np.save(out_f, np.histogram(data, density=True, bins=50))
+
+
+

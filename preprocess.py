@@ -250,7 +250,7 @@ def split(smiles):
     return re.findall(pattern, smiles)
 
 
-def construct_vocabulary(smiles_list):
+def construct_vocabulary(smiles_list, n=''):
     """Returns all the characters present in a SMILES file."""
     add_chars = set()
     for i, smiles in enumerate(tqdm(smiles_list)):
@@ -258,7 +258,7 @@ def construct_vocabulary(smiles_list):
         for char in char_list:
             add_chars.add(char)
     print("Number of characters: {}".format(len(add_chars)))
-    with open('data/Voc', 'w') as f:
+    with open('data/Voc_%s' % n, 'w') as f:
         for char in add_chars:
             f.write(char + "\n")
     return add_chars
@@ -266,8 +266,13 @@ def construct_vocabulary(smiles_list):
 
 if __name__ == "__main__":
     smiles_file = sys.argv[1]
+    if len(sys.argv) > 2:
+        runname = sys.argv[2]
+        print("Run name: %s" % runname)
+    else:
+        runname = ''
     print("Reading smiles...")
     smiles_list = canonicalize_smiles_from_file(smiles_file, molfilter=True)
     print("Constructing vocabulary...")
-    voc_chars = construct_vocabulary(smiles_list)
-    write_smiles_to_file(smiles_list, "data/mols_filtered.smi")
+    voc_chars = construct_vocabulary(smiles_list, runname)
+    write_smiles_to_file(smiles_list, "data/mols_%s_filtered.smi" % runname)
