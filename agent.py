@@ -22,8 +22,8 @@ def train_agent(runname='celecoxib', priorname='chembl', scoring_function='Tanim
 
     voc = Vocabulary(init_from_file="data/Voc_%s" % priorname)
 
-    prior = RNN(voc)
-    agent = RNN(voc)
+    prior = RNN(voc, model='LSTM')
+    agent = RNN(voc, model='LSTM')
 
     writer = SummaryWriter('logs/%s' % runname)
 
@@ -37,7 +37,7 @@ def train_agent(runname='celecoxib', priorname='chembl', scoring_function='Tanim
         prior.rnn.load_state_dict(torch.load('data/prior_%s.ckpt' % priorname, map_location=lambda storage, loc: storage))
         agent.rnn.load_state_dict(torch.load('data/prior_%s.ckpt' % priorname, map_location=lambda storage, loc: storage))
 
-    # We dont need gradients with respect to Prior
+    # We don't need gradients with respect to Prior
     for param in prior.rnn.parameters():
         param.requires_grad = False
 
@@ -69,7 +69,7 @@ def train_agent(runname='celecoxib', priorname='chembl', scoring_function='Tanim
         smiles = seq_to_smiles(seqs, voc)
         score = scoring_function(smiles)
 
-        # Calculate augmented likelihood
+        # Calculate augmented likelihood (prior likelihood plus weighted score)
         augmented_likelihood = prior_likelihood + sigma * Variable(score)
         loss = torch.pow((augmented_likelihood - agent_likelihood), 2)
 

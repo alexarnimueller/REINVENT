@@ -26,7 +26,7 @@ def pretrain(runname='chembl', restore_from=None):
     moldata = MolData("data/mols_%s_filtered.smi" % runname, voc)
     data = DataLoader(moldata, batch_size=128, shuffle=True, drop_last=True, collate_fn=MolData.collate_fn)
 
-    prior = RNN(voc)
+    prior = RNN(voc, model='LSTM')
     # writer.add_graph(prior.rnn, data.dataset[0])
 
     # Can restore from a saved RNN
@@ -56,8 +56,8 @@ def pretrain(runname='chembl', restore_from=None):
             loss.backward()
             optimizer.step()
 
-            # Every 250 steps we decrease learning rate and print some information
-            if step % 250 == 249 and step != 0:
+            # Every 500 steps we decrease learning rate and print some information
+            if step % 500 == 449 and step != 0:
                 decrease_learning_rate(optimizer, decrease_by=0.03)
                 seqs, likelihood, _ = prior.sample(128)
                 valid = 0
@@ -75,7 +75,7 @@ def pretrain(runname='chembl', restore_from=None):
                 tqdm.write("\n{:>4.1f}% valid SMILES".format(100 * valid / len(seqs)))
                 tqdm.write("*" * 50 + "\n")
                 torch.save(prior.rnn.state_dict(), "data/prior_%s.ckpt" % runname)
-                writer.add_scalar('training loss', running_loss / 250, epoch * len(data) + step)
+                writer.add_scalar('training loss', running_loss / 500, epoch * len(data) + step)
                 writer.add_scalar('valid_smiles', 100 * valid / len(seqs), epoch * len(data) + step)
                 writer.add_image('sampled_mols', mol_to_torchimage(smiles))
                 running_loss = 0.0

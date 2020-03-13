@@ -7,38 +7,77 @@ import torch.nn.functional as F
 from utils import Variable
 
 
+# class MultiGRU(nn.Module):
+#     """ Implements a three layer GRU cell including an embedding layer
+#        and an output linear layer back to the size of the vocabulary"""
+#
+#     def __init__(self, voc_size):
+#         super(MultiGRU, self).__init__()
+#         self.embedding = nn.Embedding(voc_size, 128)
+#         self.gru_1 = nn.GRUCell(128, 512)
+#         self.gru_2 = nn.GRUCell(512, 512)
+#         self.gru_3 = nn.GRUCell(512, 512)
+#         self.linear = nn.Linear(512, voc_size)
+#
+#     def forward(self, x, h):
+#         x = self.embedding(x)
+#         h_out = Variable(torch.zeros(h.size()))
+#         x = h_out[0] = self.gru_1(x, h[0])
+#         x = h_out[1] = self.gru_2(x, h[1])
+#         x = h_out[2] = self.gru_3(x, h[2])
+#         x = self.linear(x)
+#         return x, h_out
+#
+#     def init_h(self, batch_size):
+#         # Initial cell state is zero
+#         return Variable(torch.zeros(3, batch_size, 512))
+
+
 class MultiGRU(nn.Module):
     """ Implements a three layer GRU cell including an embedding layer
        and an output linear layer back to the size of the vocabulary"""
 
-    def __init__(self, voc_size):
+    def __init__(self, voc_size, embedding=128, hidden=512, layers=3, dropout=0.2):
         super(MultiGRU, self).__init__()
-        self.embedding = nn.Embedding(voc_size, 128)
-        self.gru_1 = nn.GRUCell(128, 512)
-        self.gru_2 = nn.GRUCell(512, 512)
-        self.gru_3 = nn.GRUCell(512, 512)
-        self.linear = nn.Linear(512, voc_size)
+        self.embedding = nn.Embedding(voc_size, embedding)
+        self.gru = nn.GRU(embedding, hidden, layers, bias=True, dropout=dropout, bidirectional=False)
+        self.linear = nn.Linear(hidden, voc_size)
 
-    def forward(self, x, h):
-        x = self.embedding(x)
-        h_out = Variable(torch.zeros(h.size()))
-        x = h_out[0] = self.gru_1(x, h[0])
-        x = h_out[1] = self.gru_2(x, h[1])
-        x = h_out[2] = self.gru_3(x, h[2])
-        x = self.linear(x)
-        return x, h_out
+    def forward(self, x, h=None):
+        inputs = self.embedding(x)
+        outputs, hidden = self.gru(inputs, h)
+        outputs = self.linear(outputs)
+        return outputs, hidden
 
-    def init_h(self, batch_size):
-        # Initial cell state is zero
-        return Variable(torch.zeros(3, batch_size, 512))
+
+class MultiLSTM(nn.Module):
+    """ Implements a three layer LSTM cell including an embedding layer
+       and an output linear layer back to the size of the vocabulary"""
+
+    def __init__(self, voc_size, embedding=128, hidden=512, layers=3, dropout=0.2):
+        super(MultiLSTM, self).__init__()
+        self.embedding = nn.Embedding(voc_size, embedding)
+        self.lstm = nn.LSTM(embedding, hidden, layers, bias=True, dropout=dropout, bidirectional=False)
+        self.linear = nn.Linear(hidden, voc_size)
+
+    def forward(self, x):
+        inputs = self.embedding(x)
+        outputs, (hn, cn) = self.lstm(inputs)
+        outputs = self.linear(outputs)
+        return outputs, (hn, cn)
 
 
 class RNN(object):
     """ Implements the Prior and Agent RNN. Needs a Vocabulary instance in
     order to determine size of the vocabulary and index of the END token"""
 
-    def __init__(self, voc):
-        self.rnn = MultiGRU(voc.vocab_size)
+    def __init__(self, voc, model='GRU'):
+        if model == 'GRU':
+            self.rnn = MultiGRU(voc.vocab_size)
+        elif model == 'LSTM':
+            self.rnn = MultiLSTM(voc.vocab_size)
+        else:
+            raise NotImplemented('Only GRU or LSTM are available as models!')
         if torch.cuda.is_available():
             self.rnn.cuda()
         self.voc = voc
@@ -57,15 +96,14 @@ class RNN(object):
         start_token = Variable(torch.zeros(batch_size, 1).long())
         start_token[:] = self.voc.stoi['GO']
         x = torch.cat((start_token, target[:, :-1]), 1)
-        h = self.rnn.init_h(batch_size)
 
         log_probs = Variable(torch.zeros(batch_size))
         entropy = Variable(torch.zeros(batch_size))
         for step in range(seq_length):
-            logits, h = self.rnn(x[:, step], h)
+            logits, _ = self.rnn(x[:, step].reshape((1, 128)))
             log_prob = F.log_softmax(logits, dim=1)
             prob = F.softmax(logits, dim=1)
-            log_probs += nll_loss(log_prob, target[:, step])
+            log_probs += nll_loss(log_prob, target[:, step].reshape((1, 128)))
             entropy += -torch.sum((log_prob * prob), 1)
         return log_probs, entropy
 
@@ -84,7 +122,6 @@ class RNN(object):
         """
         start_token = Variable(torch.zeros(batch_size).long())
         start_token[:] = self.voc.stoi['GO']
-        h = self.rnn.init_h(batch_size)
         x = start_token
 
         sequences = []
@@ -95,7 +132,7 @@ class RNN(object):
             finished = finished.cuda()
 
         for step in range(max_length):
-            logits, h = self.rnn(x, h)
+            logits, h = self.rnn(x)
             prob = F.softmax(logits, dim=1)
             log_prob = F.log_softmax(logits, dim=1)
             x = torch.multinomial(prob, 1).view(-1)
