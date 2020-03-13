@@ -43,11 +43,11 @@ class MultiGRU(nn.Module):
         self.gru = nn.GRU(embedding, hidden, layers, bias=True, dropout=dropout, bidirectional=False)
         self.linear = nn.Linear(hidden, voc_size)
 
-    def forward(self, x, h=None):
-        inputs = self.embedding(x)
-        outputs, hidden = self.gru(inputs, h)
-        outputs = self.linear(outputs)
-        return outputs, hidden
+    def forward(self, x):
+        embeds = self.embedding(x.view(len(x), 1, -1))
+        outputs, _ = self.gru(embeds.view(len(x), 1, -1))
+        out = self.linear(outputs.view(len(x), -1))
+        return out
 
 
 class MultiLSTM(nn.Module):
@@ -61,10 +61,10 @@ class MultiLSTM(nn.Module):
         self.linear = nn.Linear(hidden, voc_size)
 
     def forward(self, x):
-        inputs = self.embedding(x)
-        outputs, (hn, cn) = self.lstm(inputs)
-        outputs = self.linear(outputs)
-        return outputs, (hn, cn)
+        embeds = self.embedding(x.view(len(x), 1, -1))
+        outputs, _ = self.lstm(embeds.view(len(x), 1, -1))
+        out = self.linear(outputs.view(len(x), -1))
+        return out
 
 
 class RNN(object):
