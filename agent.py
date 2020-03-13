@@ -16,7 +16,7 @@ from utils import Variable, seq_to_smiles, fraction_valid_smiles, unique, mol_to
 
 
 def train_agent(runname='celecoxib', priorname='chembl', scoring_function='Tanimoto', scoring_function_kwargs=None,
-                save_dir=None, batch_size=64, n_steps=3000, num_processes=0, sigma=60, experience_replay=0, lr=0.0005):
+                save_dir=None, batch_size=64, n_steps=3000, num_processes=6, sigma=60, experience_replay=5, lr=0.0005):
     print("\nStarting run %s with prior %s ..." % (runname, priorname))
     start_time = time.time()
 
@@ -118,8 +118,8 @@ def train_agent(runname='celecoxib', priorname='chembl', scoring_function='Tanim
         writer.add_scalar('loss', loss.item(), step)
         writer.add_scalar('score', np.mean(score), step)
         writer.add_scalar('entropy', entropy.mean(), step)
-        # if best_memory:
-        #    writer.add_scalar('best_memory', best_memory, step)
+        if best_memory:
+           writer.add_scalar('best_memory', best_memory, step)
 
         # get 4 random valid smiles and scores for logging
         val_ids = np.array([i for i, s in enumerate(smiles) if is_valid_mol(s)])
